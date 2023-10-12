@@ -1,10 +1,13 @@
-"use strict";
-const pulumi = require("@pulumi/pulumi");
-const aws = require("@pulumi/aws");
-const awsx = require("@pulumi/awsx");
+import * as aws from "@pulumi/aws";
+import env from 'dotenv';
 
-// Create an AWS resource (S3 Bucket)
-const bucket = new aws.s3.Bucket("my-bucket");
+env.config();
 
-// Export the name of the bucket
-exports.bucketName = bucket.id;
+// VPC
+const main = new aws.ec2.Vpc("main", {
+    cidrBlock: "10.0.0.0/16",
+    //instanceTenancy: "default",
+    tags: {
+        Name: "main",
+    },
+});
