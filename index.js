@@ -3,13 +3,14 @@ import * as aws from "@pulumi/aws";
 import yaml from "js-yaml";
 import * as fs from "fs";
 
+
 const config = yaml.safeLoad(fs.readFileSync(`pulumi.${pulumi.getStack()}.yaml`, 'utf8'));
 
 // VPC
 const aws_vpc = new aws.ec2.Vpc("aws_vpc", {
-  cidrBlock: config.config.env.cidrBlock,
+  cidrBlock: config.config['iac-pulumi-01:cidrBlock'],
     tags: {
-        Name: config.tags.awsVPC,
+        Name: "AWS-VPC",
     },
 });
 
@@ -34,7 +35,7 @@ available.then((available) => {
       availabilityZone: available.names?.[i],
       mapPublicIpOnLaunch: true,
       tags: {
-        Name: config.tags.pubSubName,
+        Name: "Public Subnet",
     },
     });
     publicSubnets.push(publicSubnet);
@@ -45,7 +46,7 @@ available.then((available) => {
       cidrBlock: pulumi.interpolate`10.0.${i + 10}.0/24`,
       availabilityZone: available.names?.[i],
       tags: {
-        Name: config.tags.privSubName,
+        Name: "Private Subnet",
     },
     });
     privateSubnets.push(privateSubnet);
@@ -55,7 +56,7 @@ available.then((available) => {
   const internetGateway = new aws.ec2.InternetGateway("myInternetGateway", {
     vpcId: aws_vpc.id,
     tags: {
-      Name: config.tags.interGateway,
+      Name: "Internet Gateway",
   },
   });
 
@@ -63,7 +64,7 @@ available.then((available) => {
   const publicRouteTable = new aws.ec2.RouteTable("publicRouteTable", {
     vpcId: aws_vpc.id,
     tags: {
-      Name: config.tags.pubRouteTab,
+      Name: "Public Route Table",
   },
   });
 
@@ -79,7 +80,7 @@ available.then((available) => {
   const privateRouteTable = new aws.ec2.RouteTable("privateRouteTable", {
     vpcId: aws_vpc.id,
     tags: {
-      Name: config.tags.privRouteTab,
+      Name:  "Private Route Table",
   },
   });
 
@@ -94,10 +95,10 @@ available.then((available) => {
   // Create a public route in the public route table
   const publicRoute = new aws.ec2.Route("publicRoute", {
     routeTableId: publicRouteTable.id,
-    destinationCidrBlock: config.config.env.destination_cidr,
+    destinationCidrBlock: config.config['iac-pulumi-01:destination_cidr'],
     gatewayId: internetGateway.id,
     tags: {
-      Name: config.tags.pubRoute,
+      Name: "Public Route - Destination",
   },
   });
 });

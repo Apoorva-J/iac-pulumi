@@ -1,14 +1,6 @@
 encryptionsalt: v1:G9UXL0OhnJo=:v1:THoAytAhULzxKaxc:OhWOextcbNCD8/Of4Z9L7gI38+e0uA==
 config:
-  aws:region: us-east-1
-  env: 
-    cidrBlock: 10.0.0.0/16
-    destination_cidr: 0.0.0.0/0
-tags:
-  awsVPC: "AWS-VPC"
-  pubSubName: "Public Subnet"
-  privSubName: "Private Subnet"
-  pubRouteTab: "Public Route Table"
-  privRouteTab: "Private Route Table"
-  interGateway: "Internet Gateway"
-  pubRoute: "Public Route - Destination"
+  aws:profile: dev
+  aws:region: us-east-2
+  iac-pulumi-01:cidrBlock: 10.0.0.0/16
+  iac-pulumi-01:destination_cidr: 0.0.0.0/0
