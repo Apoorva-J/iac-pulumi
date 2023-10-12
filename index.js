@@ -3,8 +3,7 @@ import * as aws from "@pulumi/aws";
 import yaml from "js-yaml";
 import * as fs from "fs";
 
-const configFile = fs.readFileSync('pulumi.dev.yaml', 'utf8');
-const config = yaml.safeLoad(configFile);
+const config = yaml.safeLoad(fs.readFileSync(`pulumi.${pulumi.getStack()}.yaml`, 'utf8'));
 
 // VPC
 const aws_vpc = new aws.ec2.Vpc("aws_vpc", {
