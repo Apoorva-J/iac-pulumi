@@ -1,6 +1,6 @@
-name: iac
+name: iac-pulumi-01
 runtime:
   name: nodejs
   options:
     typescript: false
-description: 'Assignment 4 : csye6225'
+description: A minimal AWS JavaScript Pulumi program

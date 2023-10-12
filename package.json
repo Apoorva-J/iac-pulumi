@@ -1,9 +1,11 @@
 {
-    "name": "iac",
+    "name": "iac-pulumi-01",
     "main": "index.js",
+    "type": "module",
     "dependencies": {
-        "@pulumi/pulumi": "^3.0.0",
-        "@pulumi/aws": "^5.0.0",
-        "@pulumi/awsx": "^1.0.0"
+        "@pulumi/aws": "^5.42.0",
+        "@pulumi/awsx": "^1.0.0",
+        "@pulumi/pulumi": "^3.88.1",
+        "dotenv": "^16.3.1"
     }
 }
