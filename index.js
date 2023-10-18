@@ -3,15 +3,16 @@ import * as aws from "@pulumi/aws";
 import yaml from "js-yaml";
 import * as fs from "fs";
 
-
-const config = yaml.safeLoad(fs.readFileSync(`pulumi.${pulumi.getStack()}.yaml`, 'utf8'));
+const config = yaml.safeLoad(
+  fs.readFileSync(`pulumi.${pulumi.getStack()}.yaml`, "utf8")
+);
 
 // VPC
-const aws_vpc = new aws.ec2.Vpc("aws_vpc", {
-  cidrBlock: config.config['iac-pulumi-01:cidrBlock'],
-    tags: {
-        Name: "AWS-VPC",
-    },
+const aws_vpc = new aws.ec2.Vpc(config.config['iac-pulumi-01:aws_vpc'], {
+  cidrBlock: config.config['iac-pulumi-01:aws_vpc_cidrBlock'],
+  tags: {
+    Name: config.config['iac-pulumi-01:aws_vpc'],
+  },
 });
 
 // Subnets
@@ -24,81 +25,165 @@ const available = aws.getAvailabilityZones({
 });
 
 available.then((available) => {
-  const numAvailabilityZones = Math.min((available.names?.length || 0),3);
-
+  const numAvailabilityZones = Math.min(available.names?.length, parseInt(config.config['iac-pulumi-01:max_subnet_value']));
+  const arr = config.config['iac-pulumi-01:sub_cidr'].split(".");
   // Create public and private subnets in the chosen availability zones
   for (let i = 0; i < numAvailabilityZones; i++) {
+    const subpubName = config.config['iac-pulumi-01:public_subnet'] + i;
+    console.log(subpubName)
+    const subpubCidr = arr[0] + "." + arr[1] + "." + i + "." + arr[3];
     // public subnet
-    const publicSubnet = new aws.ec2.Subnet(`publicSubnet${i}`, {
+    const publicSubnet = new aws.ec2.Subnet(subpubName, {
       vpcId: aws_vpc.id,
-      cidrBlock: pulumi.interpolate`10.0.${i}.0/24`,
+      cidrBlock: subpubCidr,
       availabilityZone: available.names?.[i],
       mapPublicIpOnLaunch: true,
       tags: {
-        Name: "Public Subnet",
-    },
+        Name: subpubName,
+      },
     });
     publicSubnets.push(publicSubnet);
 
+    const host = i + numAvailabilityZones
+    // Create private subnets
+    const subpriCidr = arr[0] + "." + arr[1] + "." + host + "." + arr[3];
+    const subPrivateName = config.config['iac-pulumi-01:private_subnet'] + i;
+
     // private subnet
-    const privateSubnet = new aws.ec2.Subnet(`privateSubnet${i}`, {
+    const privateSubnet = new aws.ec2.Subnet(subPrivateName, {
       vpcId: aws_vpc.id,
-      cidrBlock: pulumi.interpolate`10.0.${i + 10}.0/24`,
+      cidrBlock: subpriCidr,
       availabilityZone: available.names?.[i],
       tags: {
-        Name: "Private Subnet",
-    },
+        Name: subPrivateName,
+      },
     });
     privateSubnets.push(privateSubnet);
   }
 
   // Create an Internet Gateway
-  const internetGateway = new aws.ec2.InternetGateway("myInternetGateway", {
+  const internetGateway = new aws.ec2.InternetGateway(config.config['iac-pulumi-01:internet_gateway'], {
     vpcId: aws_vpc.id,
     tags: {
-      Name: "Internet Gateway",
-  },
+      Name: config.config['iac-pulumi-01:internet_gateway'],
+    },
   });
 
   // Create a public route table and associate it with public subnets
-  const publicRouteTable = new aws.ec2.RouteTable("publicRouteTable", {
+  const publicRouteTable = new aws.ec2.RouteTable(config.config['iac-pulumi-01:public_route_table'], {
     vpcId: aws_vpc.id,
     tags: {
-      Name: "Public Route Table",
-  },
+      Name: config.config['iac-pulumi-01:public_route_table'],
+    },
   });
 
   publicSubnets.forEach((subnet, index) => {
-    const routeTable = new aws.ec2.RouteTableAssociation(`publicSubnetAssociation${index}`, {
+    let pubAssociationNmae = config.config['iac-pulumi-01:public_route_table_association'] + index
+    const routeTable = new aws.ec2.RouteTableAssociation(
+      pubAssociationNmae,
+      {
         routeTableId: publicRouteTable.id,
         subnetId: subnet.id,
-    });
-});
-
-
-  // Create a private route table and associate it with private subnets
-  const privateRouteTable = new aws.ec2.RouteTable("privateRouteTable", {
-    vpcId: aws_vpc.id,
-    tags: {
-      Name:  "Private Route Table",
-  },
+      }
+    );
   });
 
-    // Attach all private subnets to table the private route table
-    privateSubnets.forEach((subnet, index) => {
-        const routeTable = new aws.ec2.RouteTableAssociation(`privateSubnetAssociation${index}`, {
-            routeTableId: privateRouteTable.id,
-            subnetId: subnet.id,
-        });
-    });
+  // Create a private route table and associate it with private subnets
+  const privateRouteTable = new aws.ec2.RouteTable(config.config['iac-pulumi-01:private_route_table'], {
+    vpcId: aws_vpc.id,
+    tags: {
+      Name: config.config['iac-pulumi-01:private_route_table'],
+    },
+  });
+
+  // Attach all private subnets to table the private route table
+  privateSubnets.forEach((subnet, index) => {
+    let priAssociationNmae = config.config['iac-pulumi-01:private_route_table_association'] + index
+    const routeTable = new aws.ec2.RouteTableAssociation(
+      priAssociationNmae,
+      {
+        routeTableId: privateRouteTable.id,
+        subnetId: subnet.id,
+      }
+    );
+  });
 
   // Create a public route in the public route table
   const publicRoute = new aws.ec2.Route("publicRoute", {
     routeTableId: publicRouteTable.id,
-    destinationCidrBlock: config.config['iac-pulumi-01:destination_cidr'],
+    destinationCidrBlock: config.config['iac-pulumi-01:route_to_internet'],
     gatewayId: internetGateway.id,
     tags: {
-      Name: "Public Route - Destination",
-  },
+      Name: config.config['iac-pulumi-01:public_route'],
+    },
   });
+
+  const appSecurityGroup = new aws.ec2.SecurityGroup(config.config['iac-pulumi-01:application_security_group'], {
+    vpcId: aws_vpc.id,
+    description: "Security group for web applications",
+    ingress: [
+      {
+        fromPort: config.config['iac-pulumi-01:ssh_from'], //SSH
+        toPort: config.config['iac-pulumi-01:ssh_to'],
+        protocol: config.config['iac-pulumi-01:protocol'],
+        cidrBlocks: [config.config['iac-pulumi-01:cidr_blocks']],
+        ipv6CidrBlocks: [config.config['iac-pulumi-01:ipv6_cidr_blocks']], 
+      },
+      {
+        fromPort: config.config['iac-pulumi-01:http_from'], //HTTP
+        toPort: config.config['iac-pulumi-01:http_to'],
+        protocol: config.config['iac-pulumi-01:protocol'],
+        cidrBlocks: [config.config['iac-pulumi-01:cidr_blocks']],
+        ipv6CidrBlocks: [config.config['iac-pulumi-01:ipv6_cidr_blocks']], 
+      },
+      {
+        fromPort: config.config['iac-pulumi-01:https_from'], //HTTPS
+        toPort: config.config['iac-pulumi-01:https_to'],
+        protocol: config.config['iac-pulumi-01:protocol'],
+        cidrBlocks: [config.config['iac-pulumi-01:cidr_blocks']],
+        ipv6CidrBlocks: [config.config['iac-pulumi-01:ipv6_cidr_blocks']], 
+      },
+      {
+        fromPort: config.config['iac-pulumi-01:your_from'], // Your application
+        toPort: config.config['iac-pulumi-01:your_to'],
+        protocol: config.config['iac-pulumi-01:protocol'],
+        cidrBlocks: [config.config['iac-pulumi-01:cidr_blocks']],
+        ipv6CidrBlocks: [config.config['iac-pulumi-01:ipv6_cidr_blocks']],  
+      },
+    ],
+    tags: {
+        Name: config.config['iac-pulumi-01:application_security_group'],
+    },
+  });
+
+  const ami = aws.ec2.getAmi({
+    filters: [
+        {
+            name: config.config['iac-pulumi-01:ami'],
+            values: [config.config['iac-pulumi-01:ami_value']],
+        },
+        {
+            name: config.config['iac-pulumi-01:root_device_type_tag'],
+            values: [config.config['iac-pulumi-01:root_device_type_tag_value']],
+        },
+        {
+            name: config.config['iac-pulumi-01:virtualization_tag'],
+            values: [config.config['iac-pulumi-01:virtualization_tag_value']],
+        },
+    ],
+    mostRecent: true,
+    owners: [config.config['iac-pulumi-01:owner']],
+});
+
+const instance = new aws.ec2.Instance(config.config['iac-pulumi-01:instance_tag'], {
+    ami: ami.then(i => i.id),
+    instanceType: config.config['iac-pulumi-01:instance_type'],
+    subnetId: publicSubnets[0],
+    keyName: config.config['iac-pulumi-01:key_value'],
+    associatePublicIpAddress: true,
+    vpcSecurityGroupIds: [
+      appSecurityGroup.id,
+    ]
+});
+
 });
