@@ -199,67 +199,67 @@ available.then((available) => {
   // );
 
   // Create a security group for the RDS instance
-  const dbSecurityGroup = new aws.ec2.SecurityGroup("dbSecurityGroup", {
+  const dbSecurityGroup = new aws.ec2.SecurityGroup(config.config["iac-pulumi-01:rds_security_group"], {
     vpcId: aws_vpc.id,
     description: "Security group for RDS instances",
     ingress: [
       {
-        fromPort: "3306", // For MySQL/MariaDB
-        toPort: "3306",
-        protocol: "tcp",
+        fromPort: config.config["iac-pulumi-01:from_port_sql"], // For MySQL/MariaDB
+        toPort: config.config["iac-pulumi-01:to_port_sql"],
+        protocol: config.config["iac-pulumi-01:protocol"],
         securityGroups: [appSecurityGroup.id], // Refer to your application's security group
       },
     ],
     egress: [
       {
-        fromPort: "0", // For MySQL/MariaDB
-        toPort: "0",
-        protocol: "-1",
+        fromPort: config.config["iac-pulumi-01:from_port_restricted"], // For MySQL/MariaDB
+        toPort: config.config["iac-pulumi-01:to_port_restricted"],
+        protocol: config.config["iac-pulumi-01:portal_restricted"],
         securityGroups: [appSecurityGroup.id], // Refer to your application's security group
         cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
       },
     ],
     tags: {
-      Name: "RDS Security Group",
+      Name: config.config["iac-pulumi-01:rds_security_group"],
     },
   });
 
   // Create an RDS parameter group
   const dbParameterGroup = new aws.rds.ParameterGroup("db-parameter-group", {
-    family: "mysql8.0", // Specify the appropriate family for your database engine and version
+    family: config.config["iac-pulumi-01:family"], // Specify the appropriate family for your database engine and version
     vpcId: aws_vpc.id,
     parameters: [
       {
-        name: "character_set_server",
-        value: "utf8",
+        name: config.config["iac-pulumi-01:name"],
+        value: config.config["iac-pulumi-01:value"],
       },
     ],
   });
 
   // Create a DB subnet group for RDS instances
-  const dbSubnetGroup = new aws.rds.SubnetGroup("mydbsubnetgroup", {
+  const dbSubnetGroup = new aws.rds.SubnetGroup(config.config["iac-pulumi-01:my_db_subnet_group"], {
     subnetIds: privateSubnets.map((subnet) => subnet.id),
     tags: {
-      Name: "mydbsubnetgroup",
+      Name: config.config["iac-pulumi-01:my_db_subnet_group"],
     },
   });
 
   // Create the RDS instance
-  const rdsInstance = new aws.rds.Instance("rds-instance", {
-    allocatedStorage: 20,
-    storageType: "gp2",
-    engine: "mysql",
-    engineVersion: "8.0",
-    skipFinalSnapshot: true,
-    instanceClass: "db.t2.micro",
-    multiAz: false,
-    dbName: "assignment1_db",
-    username: "root",
-    password: "Planet12345",
+  const rdsInstance = new aws.rds.Instance(config.config["iac-pulumi-01:rds_instance"], {
+    allocatedStorage: config.config["iac-pulumi-01:allocated_storage"],
+    storageType: config.config["iac-pulumi-01:storage_type"],
+    engine: config.config["iac-pulumi-01:engine"],
+    engineVersion: config.config["iac-pulumi-01:engine_version"],
+    skipFinalSnapshot: config.config["iac-pulumi-01:skipFinalSnapshot"],
+    instanceClass: config.config["iac-pulumi-01:instanceClass"],
+    multiAz: config.config["iac-pulumi-01:multiAz"],
+    dbName: config.config["iac-pulumi-01:dbName"],
+    username: config.config["iac-pulumi-01:username"],
+    password: config.config["iac-pulumi-01:password"],
     parameterGroupName: dbParameterGroup.name,
     dbSubnetGroupName: dbSubnetGroup,
     vpcSecurityGroupIds: [dbSecurityGroup.id, appSecurityGroup.id],
-    publiclyAccessible: false,
+    publiclyAccessible: config.config["iac-pulumi-01:publiclyAccessible"],
   });
 
   rdsInstance.endpoint.apply((endpoint) => {
@@ -270,15 +270,15 @@ available.then((available) => {
         instanceType: config.config["iac-pulumi-01:instance_type"],
         subnetId: publicSubnets[0],
         keyName: config.config["iac-pulumi-01:key_value"],
-        associatePublicIpAddress: true,
+        associatePublicIpAddress: config.config["iac-pulumi-01:associatePublicIpAddress"],
         vpcSecurityGroupIds: [appSecurityGroup.id, dbSecurityGroup.id],
         userData: pulumi.interpolate`#!/bin/bash
-            echo "host=${endpoint}" >> /home/admin/opt/webapp/.env
-            echo "user=${config.config["iac-pulumi-01:user"]}" >> /home/admin/opt/webapp/.env
-            echo "password=${config.config["iac-pulumi-01:pd"]}" >> /home/admin/opt/webapp/.env
-            echo "port=${config.config["iac-pulumi-01:port"]}" >> /home/admin/opt/webapp/.env
-            echo "dialect=${config.config["iac-pulumi-01:dialect"]}" >> /home/admin/opt/webapp/.env
-            echo "database=${config.config["iac-pulumi-01:database"]}" >> /home/admin/opt/webapp/.env
+            echo "host=${endpoint}" >> /home/admin/opt/.env
+            echo "user=${config.config["iac-pulumi-01:user"]}" >> /home/admin/opt/.env
+            echo "password=${config.config["iac-pulumi-01:pd"]}" >> /home/admin/opt/.env
+            echo "port=${config.config["iac-pulumi-01:port"]}" >> /home/admin/opt/.env
+            echo "dialect=${config.config["iac-pulumi-01:dialect"]}" >> /home/admin/opt/.env
+            echo "database=${config.config["iac-pulumi-01:database"]}" >> /home/admin/opt/.env
         `,
       }
     );
