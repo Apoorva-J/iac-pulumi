@@ -161,6 +161,15 @@ available.then((available) => {
           ipv6CidrBlocks: [config.config["iac-pulumi-01:ipv6_cidr_blocks"]],
         },
       ],
+      egress: [
+        {
+          fromPort: config.config["iac-pulumi-01:from_port_restricted"], // For MySQL/MariaDB
+          toPort: config.config["iac-pulumi-01:to_port_restricted"],
+          protocol: config.config["iac-pulumi-01:portal_restricted"],
+          // securityGroups: [appSecurityGroup], 
+          cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
+        },
+      ],
       tags: {
         Name: config.config["iac-pulumi-01:application_security_group"],
       },
@@ -215,7 +224,7 @@ available.then((available) => {
         fromPort: config.config["iac-pulumi-01:from_port_restricted"], // For MySQL/MariaDB
         toPort: config.config["iac-pulumi-01:to_port_restricted"],
         protocol: config.config["iac-pulumi-01:portal_restricted"],
-        securityGroups: [appSecurityGroup.id], // Refer to your application's security group
+        // securityGroups: [appSecurityGroup], 
         cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
       },
     ],
@@ -258,11 +267,12 @@ available.then((available) => {
     password: config.config["iac-pulumi-01:password"],
     parameterGroupName: dbParameterGroup.name,
     dbSubnetGroupName: dbSubnetGroup,
-    vpcSecurityGroupIds: [dbSecurityGroup.id, appSecurityGroup.id],
+    vpcSecurityGroupIds: [dbSecurityGroup.id],
     publiclyAccessible: config.config["iac-pulumi-01:publiclyAccessible"],
   });
 
   rdsInstance.endpoint.apply((endpoint) => {
+    //const temp=endpoint.split(':');
     const instance = new aws.ec2.Instance(
       config.config["iac-pulumi-01:instance_tag"],
       {
@@ -271,14 +281,22 @@ available.then((available) => {
         subnetId: publicSubnets[0],
         keyName: config.config["iac-pulumi-01:key_value"],
         associatePublicIpAddress: config.config["iac-pulumi-01:associatePublicIpAddress"],
-        vpcSecurityGroupIds: [appSecurityGroup.id, dbSecurityGroup.id],
+        vpcSecurityGroupIds: [appSecurityGroup.id],
+        ebsBlockDevices: [
+          {
+              deviceName: config.config["iac-pulumi-01:EC2_DEVICE_NAME"],
+              deleteOnTermination: config.config["iac-pulumi-01:EC2_DELETE_ON_TERMINATION"],
+              volumeSize: config.config["iac-pulumi-01:EC2_VOLUME_SIZE"],
+              volumeType: config.config["iac-pulumi-01:EC2_VOLUME_TYPE"]
+          }
+      ],
         userData: pulumi.interpolate`#!/bin/bash
-            echo "host=${endpoint}" >> /home/admin/opt/.env
-            echo "user=${config.config["iac-pulumi-01:user"]}" >> /home/admin/opt/.env
-            echo "password=${config.config["iac-pulumi-01:pd"]}" >> /home/admin/opt/.env
-            echo "port=${config.config["iac-pulumi-01:port"]}" >> /home/admin/opt/.env
-            echo "dialect=${config.config["iac-pulumi-01:dialect"]}" >> /home/admin/opt/.env
-            echo "database=${config.config["iac-pulumi-01:database"]}" >> /home/admin/opt/.env
+            echo "host=${endpoint}" >> /opt/csye6225/.env
+            echo "user=${config.config["iac-pulumi-01:user"]}" >> /opt/csye6225/.env
+            echo "password=${config.config["iac-pulumi-01:pd"]}" >> /opt/csye6225/.env
+            echo "port=${config.config["iac-pulumi-01:port"]}" >> /opt/csye6225/.env
+            echo "dialect=${config.config["iac-pulumi-01:dialect"]}" >> /opt/csye6225/.env
+            echo "database=${config.config["iac-pulumi-01:database"]}" >> /opt/csye6225/.env
         `,
       }
     );
