@@ -272,6 +272,31 @@ available.then((available) => {
   });
 
   rdsInstance.endpoint.apply((endpoint) => {
+
+    const IAMRole = new aws.iam.Role("IAM", {
+      assumeRolePolicy: JSON.stringify({
+          Version: "2012-10-17",
+          Statement: [
+              {
+                  Action: "sts:AssumeRole",
+                  Effect: "Allow",
+                  Principal: {
+                      Service: "ec2.amazonaws.com",
+                  },
+              },
+          ],
+      })
+  })
+
+  const policy = new aws.iam.PolicyAttachment("cloudwatch-agent-policy", {
+      policyArn: "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+      roles: [IAMRole.name],
+  });
+
+  const roleAttachment = new aws.iam.InstanceProfile("my-instance-profile", {
+      role: IAMRole.name,
+  });
+
     //const temp=endpoint.split(':');
     const instance = new aws.ec2.Instance(
       config.config["iac-pulumi-01:instance_tag"],
@@ -279,6 +304,7 @@ available.then((available) => {
         ami: ami.then((i) => i.id),
         instanceType: config.config["iac-pulumi-01:instance_type"],
         subnetId: publicSubnets[0],
+        iamInstanceProfile: roleAttachment.name,
         keyName: config.config["iac-pulumi-01:key_value"],
         associatePublicIpAddress: config.config["iac-pulumi-01:associatePublicIpAddress"],
         vpcSecurityGroupIds: [appSecurityGroup.id],
@@ -297,8 +323,24 @@ available.then((available) => {
             echo "port=${config.config["iac-pulumi-01:port"]}" >> /opt/csye6225/.env
             echo "dialect=${config.config["iac-pulumi-01:dialect"]}" >> /opt/csye6225/.env
             echo "database=${config.config["iac-pulumi-01:database"]}" >> /opt/csye6225/.env
+            sudo chown -R csye6225 /opt/csye6225
+            sudo chgrp -R csye6225 /opt/csye6225
+            sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/csye6225/cloudwatchConfig.json -s
+            sudo systemctl restart amazon-cloudwatch-agent
         `,
       }
     );
+
+
+  const hostedZone = aws.route53.getZone({ name: "dev.apoorvajain.me" });
+  const route53Record = new aws.route53.Record("myRoute53Record"
+  , {
+      name: "dev.apoorvajain.me",
+      zoneId: hostedZone.then(zone => zone.zoneId),
+      type: "A",
+      records: [instance.publicIp],
+      ttl: 60,
+  });
+
   });
 });
