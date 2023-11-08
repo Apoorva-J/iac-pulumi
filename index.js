@@ -332,14 +332,14 @@ available.then((available) => {
     );
 
 
-  const hostedZone = aws.route53.getZone({ name: "dev.apoorvajain.me" });
-  const route53Record = new aws.route53.Record("myRoute53Record"
+  const hostedZone = aws.route53.getZone({ name: config.config["iac-pulumi-01:HOSTED_ZONE_NAME"], });
+  const route53Record = new aws.route53.Record(config.config["iac-pulumi-01:RECORD_TAG"]
   , {
-      name: "dev.apoorvajain.me",
+      name: config.config["iac-pulumi-01:HOSTED_ZONE_NAME"],
       zoneId: hostedZone.then(zone => zone.zoneId),
-      type: "A",
+      type: config.config["iac-pulumi-01:RECORD_TYPE"],
       records: [instance.publicIp],
-      ttl: 60,
+      ttl: config.config["iac-pulumi-01:TTL"],
   });
 
   });
