@@ -357,14 +357,14 @@ available.then((available) => {
       protocol: config.config["iac-pulumi-01:targetGroupProtocol"],
       targetType: config.config["iac-pulumi-01:targetGrouptargetType"],
       vpcId: aws_vpc.id,
-      // healthCheck: {
-      //   path: config.config["iac-pulumi-01:healthCheckPath"],
-      //   interval: config.config["iac-pulumi-01:healthCheckInterval"],
-      //   timeout: config.config["iac-pulumi-01:healthCheckTimeout"],
-      //   healthyThreshold: config.config["iac-pulumi-01:healthCheckHealthyThreshold"],
-      //   unhealthyThreshold: config.config["iac-pulumi-01:healthCheckUnhealthyThreshold"],
-      //   matcher: config.config["iac-pulumi-01:healthCheckMatcher"],
-      // },
+      healthCheck: {
+        path: config.config["iac-pulumi-01:healthCheckPath"],
+        interval: config.config["iac-pulumi-01:healthCheckInterval"],
+        timeout: config.config["iac-pulumi-01:healthCheckTimeout"],
+        healthyThreshold: config.config["iac-pulumi-01:healthCheckHealthyThreshold"],
+        unhealthyThreshold: config.config["iac-pulumi-01:healthCheckUnhealthyThreshold"],
+        matcher: config.config["iac-pulumi-01:healthCheckMatcher"],
+      },
     });
 
     // Auto Scaling Group
@@ -377,9 +377,11 @@ available.then((available) => {
       launchTemplate: {
         id: launchConfiguration.id,
       },
-      tags: {
-        Name: "AutoScalingGroup",
-      },
+      tags: [{
+        key: config.config["iac-pulumi:autoscalingGroup_tag_key"],
+        value: config.config["iac-pulumi:autoscalingGroup_tag_value"],
+        propagateAtLaunch: config.config["iac-pulumi:autoscalingGroup_tag_propagateAtLaunch"],
+    }],
     });
 
     // Auto Scaling Policies
@@ -423,7 +425,7 @@ available.then((available) => {
         namespace: config.config["iac-pulumi-01:namespace"],
         statistic: config.config["iac-pulumi-01:statistic"],
         period: config.config["iac-pulumi-01:period"],
-        evaluationPeriods: config.config["iac-pulumi-01:evaluationPeriods"],
+        evaluationPeriods: config.config["iac-pulumi-01:evaluationPeriodsScaleDown"],
         comparisonOperator:
           config.config["iac-pulumi-01:comparisonOperatorScaleDown"],
         threshold: config.config["iac-pulumi-01:scaleDownThreshold"],
