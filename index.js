@@ -126,6 +126,40 @@ available.then((available) => {
     },
   });
 
+  // Create Load Balancer Security Group
+  const lbSecurityGroup = new aws.ec2.SecurityGroup(
+    "loadBalancerSecurityGroup",
+    {
+      vpcId: aws_vpc.id,
+      description: "Security group for the load balancer",
+      ingress: [
+        {
+          fromPort: config.config["iac-pulumi-01:http_from"],
+          toPort: config.config["iac-pulumi-01:http_from"],
+          protocol: config.config["iac-pulumi-01:protocol"],
+          cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
+        },
+        {
+          fromPort: config.config["iac-pulumi-01:https_from"],
+          toPort: config.config["iac-pulumi-01:https_from"],
+          protocol: config.config["iac-pulumi-01:protocol"],
+          cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
+        },
+      ],
+      egress: [
+        {
+          fromPort: config.config["iac-pulumi-01:from_port_restricted"],
+          toPort: config.config["iac-pulumi-01:to_port_restricted"],
+          protocol: config.config["iac-pulumi-01:portal_restricted"],
+          cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
+        },
+      ],
+      tags: {
+        Name: "lbSecurityGroup",
+      },
+    }
+  );
+
   const appSecurityGroup = new aws.ec2.SecurityGroup(
     config.config["iac-pulumi-01:application_security_group"],
     {
@@ -136,28 +170,14 @@ available.then((available) => {
           fromPort: config.config["iac-pulumi-01:ssh_from"], //SSH
           toPort: config.config["iac-pulumi-01:ssh_to"],
           protocol: config.config["iac-pulumi-01:protocol"],
-          cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
-          ipv6CidrBlocks: [config.config["iac-pulumi-01:ipv6_cidr_blocks"]],
-        },
-        {
-          fromPort: config.config["iac-pulumi-01:http_from"], //HTTP
-          toPort: config.config["iac-pulumi-01:http_to"],
-          protocol: config.config["iac-pulumi-01:protocol"],
-          cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
-          ipv6CidrBlocks: [config.config["iac-pulumi-01:ipv6_cidr_blocks"]],
-        },
-        {
-          fromPort: config.config["iac-pulumi-01:https_from"], //HTTPS
-          toPort: config.config["iac-pulumi-01:https_to"],
-          protocol: config.config["iac-pulumi-01:protocol"],
-          cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
+          securityGroups: [lbSecurityGroup.id],
           ipv6CidrBlocks: [config.config["iac-pulumi-01:ipv6_cidr_blocks"]],
         },
         {
           fromPort: config.config["iac-pulumi-01:your_from"], // Your application
           toPort: config.config["iac-pulumi-01:your_to"],
           protocol: config.config["iac-pulumi-01:protocol"],
-          cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
+          securityGroups: [lbSecurityGroup.id],
           ipv6CidrBlocks: [config.config["iac-pulumi-01:ipv6_cidr_blocks"]],
         },
       ],
@@ -166,7 +186,6 @@ available.then((available) => {
           fromPort: config.config["iac-pulumi-01:from_port_restricted"], // For MySQL/MariaDB
           toPort: config.config["iac-pulumi-01:to_port_restricted"],
           protocol: config.config["iac-pulumi-01:portal_restricted"],
-          // securityGroups: [appSecurityGroup], 
           cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
         },
       ],
@@ -195,43 +214,34 @@ available.then((available) => {
     owners: [config.config["iac-pulumi-01:owner"]],
   });
 
-  // const instance = new aws.ec2.Instance(
-  //   config.config["iac-pulumi-01:instance_tag"],
-  //   {
-  //     ami: ami.then((i) => i.id),
-  //     instanceType: config.config["iac-pulumi-01:instance_type"],
-  //     subnetId: publicSubnets[0],
-  //     keyName: config.config["iac-pulumi-01:key_value"],
-  //     associatePublicIpAddress: true,
-  //     vpcSecurityGroupIds: [appSecurityGroup.id],
-  //   }
-  // );
-
   // Create a security group for the RDS instance
-  const dbSecurityGroup = new aws.ec2.SecurityGroup(config.config["iac-pulumi-01:rds_security_group"], {
-    vpcId: aws_vpc.id,
-    description: "Security group for RDS instances",
-    ingress: [
-      {
-        fromPort: config.config["iac-pulumi-01:from_port_sql"], // For MySQL/MariaDB
-        toPort: config.config["iac-pulumi-01:to_port_sql"],
-        protocol: config.config["iac-pulumi-01:protocol"],
-        securityGroups: [appSecurityGroup.id], // Refer to your application's security group
+  const dbSecurityGroup = new aws.ec2.SecurityGroup(
+    config.config["iac-pulumi-01:rds_security_group"],
+    {
+      vpcId: aws_vpc.id,
+      description: "Security group for RDS instances",
+      ingress: [
+        {
+          fromPort: config.config["iac-pulumi-01:from_port_sql"], // For MySQL/MariaDB
+          toPort: config.config["iac-pulumi-01:to_port_sql"],
+          protocol: config.config["iac-pulumi-01:protocol"],
+          securityGroups: [appSecurityGroup.id], // Refer to your application's security group
+        },
+      ],
+      egress: [
+        {
+          fromPort: config.config["iac-pulumi-01:from_port_restricted"], // For MySQL/MariaDB
+          toPort: config.config["iac-pulumi-01:to_port_restricted"],
+          protocol: config.config["iac-pulumi-01:portal_restricted"],
+          // securityGroups: [appSecurityGroup],
+          cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
+        },
+      ],
+      tags: {
+        Name: config.config["iac-pulumi-01:rds_security_group"],
       },
-    ],
-    egress: [
-      {
-        fromPort: config.config["iac-pulumi-01:from_port_restricted"], // For MySQL/MariaDB
-        toPort: config.config["iac-pulumi-01:to_port_restricted"],
-        protocol: config.config["iac-pulumi-01:portal_restricted"],
-        // securityGroups: [appSecurityGroup], 
-        cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
-      },
-    ],
-    tags: {
-      Name: config.config["iac-pulumi-01:rds_security_group"],
-    },
-  });
+    }
+  );
 
   // Create an RDS parameter group
   const dbParameterGroup = new aws.rds.ParameterGroup("db-parameter-group", {
@@ -246,101 +256,220 @@ available.then((available) => {
   });
 
   // Create a DB subnet group for RDS instances
-  const dbSubnetGroup = new aws.rds.SubnetGroup(config.config["iac-pulumi-01:my_db_subnet_group"], {
-    subnetIds: privateSubnets.map((subnet) => subnet.id),
-    tags: {
-      Name: config.config["iac-pulumi-01:my_db_subnet_group"],
-    },
-  });
+  const dbSubnetGroup = new aws.rds.SubnetGroup(
+    config.config["iac-pulumi-01:my_db_subnet_group"],
+    {
+      subnetIds: privateSubnets.map((subnet) => subnet.id),
+      tags: {
+        Name: config.config["iac-pulumi-01:my_db_subnet_group"],
+      },
+    }
+  );
 
   // Create the RDS instance
-  const rdsInstance = new aws.rds.Instance(config.config["iac-pulumi-01:rds_instance"], {
-    allocatedStorage: config.config["iac-pulumi-01:allocated_storage"],
-    storageType: config.config["iac-pulumi-01:storage_type"],
-    engine: config.config["iac-pulumi-01:engine"],
-    engineVersion: config.config["iac-pulumi-01:engine_version"],
-    skipFinalSnapshot: config.config["iac-pulumi-01:skipFinalSnapshot"],
-    instanceClass: config.config["iac-pulumi-01:instanceClass"],
-    multiAz: config.config["iac-pulumi-01:multiAz"],
-    dbName: config.config["iac-pulumi-01:dbName"],
-    username: config.config["iac-pulumi-01:username"],
-    password: config.config["iac-pulumi-01:password"],
-    parameterGroupName: dbParameterGroup.name,
-    dbSubnetGroupName: dbSubnetGroup,
-    vpcSecurityGroupIds: [dbSecurityGroup.id],
-    publiclyAccessible: config.config["iac-pulumi-01:publiclyAccessible"],
-  });
+  const rdsInstance = new aws.rds.Instance(
+    config.config["iac-pulumi-01:rds_instance"],
+    {
+      allocatedStorage: config.config["iac-pulumi-01:allocated_storage"],
+      storageType: config.config["iac-pulumi-01:storage_type"],
+      engine: config.config["iac-pulumi-01:engine"],
+      engineVersion: config.config["iac-pulumi-01:engine_version"],
+      skipFinalSnapshot: config.config["iac-pulumi-01:skipFinalSnapshot"],
+      instanceClass: config.config["iac-pulumi-01:instanceClass"],
+      multiAz: config.config["iac-pulumi-01:multiAz"],
+      dbName: config.config["iac-pulumi-01:dbName"],
+      username: config.config["iac-pulumi-01:username"],
+      password: config.config["iac-pulumi-01:password"],
+      parameterGroupName: dbParameterGroup.name,
+      dbSubnetGroupName: dbSubnetGroup,
+      vpcSecurityGroupIds: [dbSecurityGroup.id],
+      publiclyAccessible: config.config["iac-pulumi-01:publiclyAccessible"],
+    }
+  );
 
   rdsInstance.endpoint.apply((endpoint) => {
-
     const IAMRole = new aws.iam.Role("IAM", {
       assumeRolePolicy: JSON.stringify({
-          Version: "2012-10-17",
-          Statement: [
-              {
-                  Action: "sts:AssumeRole",
-                  Effect: "Allow",
-                  Principal: {
-                      Service: "ec2.amazonaws.com",
-                  },
-              },
-          ],
-      })
-  })
-
-  const policy = new aws.iam.PolicyAttachment("cloudwatch-agent-policy", {
-      policyArn: "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
-      roles: [IAMRole.name],
-  });
-
-  const roleAttachment = new aws.iam.InstanceProfile("my-instance-profile", {
-      role: IAMRole.name,
-  });
-
-    //const temp=endpoint.split(':');
-    const instance = new aws.ec2.Instance(
-      config.config["iac-pulumi-01:instance_tag"],
-      {
-        ami: ami.then((i) => i.id),
-        instanceType: config.config["iac-pulumi-01:instance_type"],
-        subnetId: publicSubnets[0],
-        iamInstanceProfile: roleAttachment.name,
-        keyName: config.config["iac-pulumi-01:key_value"],
-        associatePublicIpAddress: config.config["iac-pulumi-01:associatePublicIpAddress"],
-        vpcSecurityGroupIds: [appSecurityGroup.id],
-        ebsBlockDevices: [
+        Version: config.config["iac-pulumi-01:endpoint_version"],
+        Statement: [
           {
-              deviceName: config.config["iac-pulumi-01:EC2_DEVICE_NAME"],
-              deleteOnTermination: config.config["iac-pulumi-01:EC2_DELETE_ON_TERMINATION"],
-              volumeSize: config.config["iac-pulumi-01:EC2_VOLUME_SIZE"],
-              volumeType: config.config["iac-pulumi-01:EC2_VOLUME_TYPE"]
-          }
+            Action: config.config["iac-pulumi-01:action"],
+            Effect: config.config["iac-pulumi-01:effect"],
+            Principal: {
+              Service: config.config["iac-pulumi-01:service"],
+            },
+          },
+        ],
+      }),
+    });
+
+    const policy = new aws.iam.PolicyAttachment("cloudwatch-agent-policy", {
+      policyArn: config.config["iac-pulumi-01:policyArn"],
+      roles: [IAMRole.name],
+    });
+
+    const roleAttachment = new aws.iam.InstanceProfile("my-instance-profile", {
+      role: IAMRole.name,
+    });
+
+    // Setup Autoscaling for EC2 Instances
+    const launchConfiguration = new aws.ec2.LaunchTemplate("asgLaunchConfig", {
+      imageId: ami.then((i) => i.id), // Your custom AMI
+      instanceType: config.config["iac-pulumi-01:instanceType"],
+      keyName: config.config["iac-pulumi-01:key_value"],
+      networkInterfaces: [
+        {
+          associatePublicIpAddress:
+            config.config["iac-pulumi-01:associatePublicIpAddress"],
+          securityGroups: [appSecurityGroup.id],
+        },
       ],
-        userData: pulumi.interpolate`#!/bin/bash
+      ebsBlockDevices: [
+        {
+          deviceName: config.config["iac-pulumi-01:EC2_DEVICE_NAME"],
+          deleteOnTermination:
+            config.config["iac-pulumi-01:EC2_DELETE_ON_TERMINATION"],
+          volumeSize: config.config["iac-pulumi-01:EC2_VOLUME_SIZE"],
+          volumeType: config.config["iac-pulumi-01:EC2_VOLUME_TYPE"],
+        },
+      ],
+      iamInstanceProfile: { name: roleAttachment.name },
+      userData: Buffer.from(
+        `#!/bin/bash
             echo "host=${endpoint}" >> /opt/csye6225/.env
             echo "user=${config.config["iac-pulumi-01:user"]}" >> /opt/csye6225/.env
             echo "password=${config.config["iac-pulumi-01:pd"]}" >> /opt/csye6225/.env
             echo "port=${config.config["iac-pulumi-01:port"]}" >> /opt/csye6225/.env
             echo "dialect=${config.config["iac-pulumi-01:dialect"]}" >> /opt/csye6225/.env
             echo "database=${config.config["iac-pulumi-01:database"]}" >> /opt/csye6225/.env
+            echo "statsdPort=${config.config["iac-pulumi-01:statsdPort"]}" >> /opt/csye6225/.env
+            echo "statsdhost=${config.config["iac-pulumi-01:statsdHost"]}" >> /opt/csye6225/.env
             sudo chown -R csye6225 /opt/csye6225
             sudo chgrp -R csye6225 /opt/csye6225
             sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/csye6225/cloudwatchConfig.json -s
             sudo systemctl restart amazon-cloudwatch-agent
-        `,
+        `
+      ).toString("base64"),
+    });
+
+    const targetGroup = new aws.lb.TargetGroup("targetgroup", {
+      port: config.config["iac-pulumi-01:targetGroupPort"],
+      protocol: config.config["iac-pulumi-01:targetGroupProtocol"],
+      targetType: config.config["iac-pulumi-01:targetGrouptargetType"],
+      vpcId: aws_vpc.id,
+      // healthCheck: {
+      //   path: config.config["iac-pulumi-01:healthCheckPath"],
+      //   interval: config.config["iac-pulumi-01:healthCheckInterval"],
+      //   timeout: config.config["iac-pulumi-01:healthCheckTimeout"],
+      //   healthyThreshold: config.config["iac-pulumi-01:healthCheckHealthyThreshold"],
+      //   unhealthyThreshold: config.config["iac-pulumi-01:healthCheckUnhealthyThreshold"],
+      //   matcher: config.config["iac-pulumi-01:healthCheckMatcher"],
+      // },
+    });
+
+    // Auto Scaling Group
+    const autoScalingGroup = new aws.autoscaling.Group("myAutoScalingGroup", {
+      vpcZoneIdentifiers: publicSubnets,
+      minSize: config.config["iac-pulumi-01:autoScalingGroupMin"],
+      maxSize: config.config["iac-pulumi-01:autoScalingGroupMax"],
+      desiredCapacity: config.config["iac-pulumi-01:desiredCapacity"],
+      targetGroupArns: [targetGroup.arn],
+      launchTemplate: {
+        id: launchConfiguration.id,
+      },
+      tags: {
+        Name: "AutoScalingGroup",
+      },
+    });
+
+    // Auto Scaling Policies
+    const cpuScalingPolicyUp = new aws.autoscaling.Policy("scaleUpPolicy", {
+      scalingAdjustment: config.config["iac-pulumi-01:scalingAdjustment"],
+      adjustmentType: config.config["iac-pulumi-01:adjustmentType"],
+      cooldown: config.config["iac-pulumi-01:cooldown"],
+      policyType: config.config["iac-pulumi-01:policyType"],
+      autoscalingGroupName: autoScalingGroup.name,
+    });
+
+    const scaleUpCondition = new aws.cloudwatch.MetricAlarm(
+      "scaleUpCondition",
+      {
+        metricName: config.config["iac-pulumi-01:metricName"],
+        namespace: config.config["iac-pulumi-01:namespace"],
+        statistic: config.config["iac-pulumi-01:statistic"],
+        period: config.config["iac-pulumi-01:period"],
+        evaluationPeriods: config.config["iac-pulumi-01:evaluationPeriods"],
+        comparisonOperator: config.config["iac-pulumi-01:comparisonOperator"],
+        dimensions: {
+          AutoScalingGroupName: autoScalingGroup.name,
+        },
+        threshold: config.config["iac-pulumi-01:threshold"],
+        alarmActions: [cpuScalingPolicyUp.arn],
       }
     );
 
+    const scaleDown = new aws.autoscaling.Policy("scale_down_policy", {
+      cooldown: config.config["iac-pulumi-01:cooldown"],
+      scalingAdjustment: config.config["iac-pulumi-01:scalingAdjustmentDown"],
+      adjustmentType: config.config["iac-pulumi-01:adjustmentType"],
+      policyType: config.config["iac-pulumi-01:policyType"],
+      autoscalingGroupName: autoScalingGroup.name,
+    });
 
-  const hostedZone = aws.route53.getZone({ name: config.config["iac-pulumi-01:HOSTED_ZONE_NAME"], });
-  const route53Record = new aws.route53.Record(config.config["iac-pulumi-01:RECORD_TAG"]
-  , {
+    const scaleDownCondition = new aws.cloudwatch.MetricAlarm(
+      "scaleDownCondition",
+      {
+        metricName: config.config["iac-pulumi-01:metricName"],
+        namespace: config.config["iac-pulumi-01:namespace"],
+        statistic: config.config["iac-pulumi-01:statistic"],
+        period: config.config["iac-pulumi-01:period"],
+        evaluationPeriods: config.config["iac-pulumi-01:evaluationPeriods"],
+        comparisonOperator:
+          config.config["iac-pulumi-01:comparisonOperatorScaleDown"],
+        threshold: config.config["iac-pulumi-01:scaleDownThreshold"],
+        dimensions: {
+          AutoScalingGroupName: autoScalingGroup.name,
+        },
+        alarmActions: [scaleDown.arn],
+      }
+    );
+
+    const loadBalancer = new aws.lb.LoadBalancer("webappLoadBalancer", {
+      loadBalancerType: config.config["iac-pulumi-01:loadBalancerType"],
+      subnets: publicSubnets,
+      // enableDeletionProtection: false,
+      securityGroups: [lbSecurityGroup.id],
+    });
+
+    const listener = new aws.lb.Listener("listener", {
+      loadBalancerArn: loadBalancer.arn,
+      port: config.config["iac-pulumi-01:listenerPort"],
+      protocol: config.config["iac-pulumi-01:listenerProtocol"],
+      defaultActions: [
+        {
+          type: config.config["iac-pulumi-01:listenerType"],
+          targetGroupArn: targetGroup.arn,
+        },
+      ],
+    });
+
+    const hostedZone = aws.route53.getZone({
       name: config.config["iac-pulumi-01:HOSTED_ZONE_NAME"],
-      zoneId: hostedZone.then(zone => zone.zoneId),
-      type: config.config["iac-pulumi-01:RECORD_TYPE"],
-      records: [instance.publicIp],
-      ttl: config.config["iac-pulumi-01:TTL"],
-  });
-
+    });
+    const route53Record = new aws.route53.Record(
+      config.config["iac-pulumi-01:RECORD_TAG"],
+      {
+        name: config.config["iac-pulumi-01:HOSTED_ZONE_NAME"],
+        zoneId: hostedZone.then((zone) => zone.zoneId),
+        type: config.config["iac-pulumi-01:RECORD_TYPE"],
+        aliases: [
+          {
+            name: loadBalancer.dnsName,
+            zoneId: loadBalancer.zoneId,
+            evaluateTargetHealth: true,
+          },
+        ],
+      }
+    );
   });
 });
