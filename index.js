@@ -344,9 +344,6 @@ available.then((available) => {
             echo "database=${config.config["iac-pulumi-01:database"]}" >> /opt/csye6225/.env
             echo "statsdPort=${config.config["iac-pulumi-01:statsdPort"]}" >> /opt/csye6225/.env
             echo "statsdhost=${config.config["iac-pulumi-01:statsdHost"]}" >> /opt/csye6225/.env
-            sudo chown -R csye6225 /opt/csye6225
-            sudo chgrp -R csye6225 /opt/csye6225
-            sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/csye6225/cloudwatchConfig.json -s
             sudo systemctl restart amazon-cloudwatch-agent
         `
       ).toString("base64"),
