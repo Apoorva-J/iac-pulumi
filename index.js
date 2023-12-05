@@ -135,12 +135,12 @@ available.then((available) => {
       vpcId: aws_vpc.id,
       description: "Security group for the load balancer",
       ingress: [
-        {
-          fromPort: config.config["iac-pulumi-01:http_from"],
-          toPort: config.config["iac-pulumi-01:http_from"],
-          protocol: config.config["iac-pulumi-01:protocol"],
-          cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
-        },
+        // {
+        //   fromPort: config.config["iac-pulumi-01:http_from"],
+        //   toPort: config.config["iac-pulumi-01:http_from"],
+        //   protocol: config.config["iac-pulumi-01:protocol"],
+        //   cidrBlocks: [config.config["iac-pulumi-01:cidr_blocks"]],
+        // },
         {
           fromPort: config.config["iac-pulumi-01:https_from"],
           toPort: config.config["iac-pulumi-01:https_from"],
