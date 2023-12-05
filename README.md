@@ -68,3 +68,25 @@ Here is a step-by-step guide on creating a custom VPC infrastructure:
 13. Add a route to the private route table for the desired destinations.
 
 14. Associate the private subnets with the private route table.
+
+
+# Import SSL Certificate into AWS Certificate Manager (ACM)
+ 
+This guide outlines the steps to import an SSL certificate into AWS Certificate Manager (ACM) using the AWS CLI. This is useful when you obtain the SSL certificate from an external vendor such as Namecheap.
+ 
+## Prerequisites
+ 
+- Ensure you have the AWS CLI installed and configured with the necessary credentials.
+- Have the SSL certificate files ready:
+  - `certificate.crt`: Your SSL certificate.
+  - `privatekey.pem`: The private key corresponding to the certificate.
+  - `ca_bundle.crt`: Certificate chain or intermediate certificates.
+ 
+## Import Certificate Command
+ 
+Use the following AWS CLI command to import the SSL certificate into ACM:
+
+aws acm import-certificate \
+  --certificate fileb://path/to/certificate.crt \
+  --private-key fileb://path/to/privatekey.pem \
+  --certificate-chain fileb://path/to/ca_bundle.crt

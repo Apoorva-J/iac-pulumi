@@ -401,7 +401,7 @@ available.then((available) => {
     const bucket = new gcp.storage.Bucket(
       "csye6225-webapp-pulumi-bucket-name",
       {
-        name: "csye6225-webapp-pulumi-bucket123",
+        name: config.config["iac-pulumi-01:bucketName"],
         location: "us-east1",
         uniformBucketLevelAccess: true,
         forceDestroy: true,
@@ -500,23 +500,6 @@ available.then((available) => {
       }
     );
 
-    // // Create Lambda function
-    //   const lambdaFunction = new aws.lambda.Function("upload-submission-lambda", {
-    //     name: "lambda",
-    //     runtime: aws.lambda.Runtime.NodeJS18dX,
-    //     handler: "index.handler",
-    //     role: lambdaSNSRole.arn,
-    //     code: fileAsset,
-    //     environment: {
-    //       variables: {
-    //         GCS_BUCKET_NAME: bucket.name,
-    //         GCP_SERVICE_ACCOUNT_PVT_KEY: serviceAccountKey.privateKey,
-    //         DYNAMODB_TABLE_NAME: dynamoDBTable.name,
-    //         EMAIL_API_KEY: "0e9e0d1f304a51ef3d80a54cc36f726b-5d2b1caa-49d19a0f",
-    //         EMAIL_DOMAIN: "shwetabulchandani.me",
-    //       }
-    //     }
-    //   });
 
     const lambdaFunctionTest = new aws.lambda.Function("myLambdaFunctionTest", {
       runtime: "nodejs18.x",
@@ -597,6 +580,7 @@ available.then((available) => {
 
       // Setup Autoscaling for EC2 Instances
       let launchConfiguration = new aws.ec2.LaunchTemplate("asgLaunchConfig", {
+        name:"LaunchTemplate",
         imageId: ami.then((i) => i.id),
         instanceType: config.config["iac-pulumi-01:instanceType"],
         keyName: config.config["iac-pulumi-01:key_value"],
@@ -639,6 +623,7 @@ available.then((available) => {
 
       // Auto Scaling Group
       const autoScalingGroup = new aws.autoscaling.Group("myAutoScalingGroup", {
+        name:"AutoscalingGroup",
         vpcZoneIdentifiers: publicSubnets,
         minSize: config.config["iac-pulumi-01:autoScalingGroupMin"],
         maxSize: config.config["iac-pulumi-01:autoScalingGroupMax"],
@@ -646,6 +631,7 @@ available.then((available) => {
         targetGroupArns: [targetGroup.arn],
         launchTemplate: {
           id: launchConfiguration.id,
+          version: "$Latest",
         },
         tags: [
           {
@@ -720,8 +706,10 @@ available.then((available) => {
 
       const listener = new aws.lb.Listener("listener", {
         loadBalancerArn: loadBalancer.arn,
-        port: config.config["iac-pulumi-01:listenerPort"],
-        protocol: config.config["iac-pulumi-01:listenerProtocol"],
+        port: config.config["iac-pulumi-01:newListenerPort"],
+        protocol: config.config["iac-pulumi-01:newListenerProtocol"],
+        sslPolicy: "ELBSecurityPolicy-2016-08",
+        certificateArn: config.config["iac-pulumi-01:certificateArn"],
         defaultActions: [
           {
             type: config.config["iac-pulumi-01:listenerType"],
